@@ -17,6 +17,7 @@ Pod::Spec.new do |mqttc|
 	mqttc.osx.deployment_target = "10.10"
 	mqttc.tvos.deployment_target = "9.0"
 	mqttc.default_subspec = 'Core'
+  mqttc.dependency 'Firebase/Crashlytics'
 
 	mqttc.subspec 'Core' do |core|
 		core.dependency 'MQTTClient/Min'

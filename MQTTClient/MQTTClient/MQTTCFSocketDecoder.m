@@ -6,8 +6,9 @@
 //
 
 #import "MQTTCFSocketDecoder.h"
-
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 #import "MQTTLog.h"
+#import "BossBasicDefine.h"
 
 @interface MQTTCFSocketDecoder()
 
@@ -31,12 +32,38 @@
 }
 
 - (void)dealloc {
-    [self close];
+    @try {
+        if (self.stream.streamStatus == NSStreamStatusOpen) {
+            [self.stream close];
+        }
+    } @catch (NSException *exception) {
+        
+    } @finally {
+        
+    }
 }
 
 - (void)close {
-    [self.stream close];
-    [self.stream setDelegate:nil];
+    // try catch
+    @try {
+        //此处写可能出现崩溃的代码
+        if (self.stream.streamStatus == NSStreamStatusOpen) {
+            [self.stream close];
+            [self.stream setDelegate:nil];
+        }
+    } @catch (NSException *exception) {
+        //捕获到异常要执行的代码
+        NSDictionary *userInfo = @{
+            @"accountId": kCache.umsAccessTokenModel.accountId?:@"用户id为空",
+            @"exception": exception
+        };
+        NSError *error = [NSError errorWithDomain:NSCocoaErrorDomain
+                                             code:-1001
+                                         userInfo:userInfo];
+        [[FIRCrashlytics crashlytics] recordError:error];
+    } @finally {
+        //不管能不能捕获到异常都会执行的方法
+    }
 }
 
 - (void)stream:(NSStream *)sender handleEvent:(NSStreamEvent)eventCode {
