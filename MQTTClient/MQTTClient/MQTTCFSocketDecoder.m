@@ -35,6 +35,7 @@
     @try {
         if (self.stream.streamStatus == NSStreamStatusOpen) {
             [self.stream close];
+            [self.stream setDelegate:nil];
         }
     } @catch (NSException *exception) {
         
