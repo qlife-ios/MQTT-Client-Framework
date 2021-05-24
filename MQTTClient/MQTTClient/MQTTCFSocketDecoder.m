@@ -32,39 +32,13 @@
 }
 
 - (void)dealloc {
-    @try {
-        if (self.stream.streamStatus == NSStreamStatusOpen) {
-            [self.stream close];
-            [self.stream setDelegate:nil];
-        }
-    } @catch (NSException *exception) {
-        
-    } @finally {
-        
-    }
+    [self close];
 }
 
 - (void)close {
-    // try catch
-    @try {
-        //此处写可能出现崩溃的代码
-        if (self.stream.streamStatus == NSStreamStatusOpen) {
-            [self.stream close];
-            [self.stream setDelegate:nil];
-        }
-    } @catch (NSException *exception) {
-        //捕获到异常要执行的代码
-        NSDictionary *userInfo = @{
-            @"accountId": kCache.umsAccessTokenModel.accountId?:@"用户id为空",
-            @"exception": exception
-        };
-        NSError *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                             code:-1001
-                                         userInfo:userInfo];
-        [[FIRCrashlytics crashlytics] recordError:error];
-    } @finally {
-        //不管能不能捕获到异常都会执行的方法
-    }
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.stream.streamStatus) forKey:@"MQTTCFSocketDecoderStreamStatus"];
+    [self.stream close];
+    [self.stream setDelegate:nil];
 }
 
 - (void)stream:(NSStream *)sender handleEvent:(NSStreamEvent)eventCode {
