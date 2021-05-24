@@ -7,7 +7,7 @@
 //
 
 #import "MQTTCFSocketTransport.h"
-
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 #import "MQTTLog.h"
 
 @interface MQTTCFSocketTransport() {
@@ -143,6 +143,11 @@
 
 - (void)internalClose {
     DDLogVerbose(@"[MQTTCFSocketTransport] close");
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketTransportState"];
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.encoder.state) forKey:@"MQTTCFSocketTransportEncoder"];
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.decoder.state) forKey:@"MQTTCFSocketTransportDecoder"];
+    
     self.state = MQTTTransportClosing;
 
     if (self.encoder) {

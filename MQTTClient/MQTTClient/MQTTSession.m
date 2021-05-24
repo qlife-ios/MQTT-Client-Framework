@@ -13,6 +13,7 @@
 #import "MQTTMessage.h"
 #import "MQTTCoreDataPersistence.h"
 #import "GCDTimer.h"
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 
 @class MQTTSSLSecurityPolicy;
 
@@ -94,6 +95,7 @@ NSString * const MQTTSessionErrorDomain = @"MQTT";
 }
 
 - (void)dealloc {
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.status) forKey:@"MQTTSessionStatus"];
     [self.keepAliveTimer invalidate];
     [self.checkDupTimer invalidate];
 }
@@ -538,7 +540,10 @@ NSString * const MQTTSessionErrorDomain = @"MQTT";
         [self.keepAliveTimer invalidate];
         self.keepAliveTimer = nil;
     }
-
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.transport.state) forKey:@"MQTTSessionTransport"];
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.decoder.state) forKey:@"MQTTSessionDecoder"];
+    
     if (self.transport) {
         [self.transport close];
         self.transport.delegate = nil;

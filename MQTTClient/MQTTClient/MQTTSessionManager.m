@@ -12,6 +12,7 @@
 #import "ReconnectTimer.h"
 #import "ForegroundReconnection.h"
 #import "MQTTSSLSecurityPolicyTransport.h"
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 
 @interface MQTTSessionManager()
 
@@ -221,6 +222,9 @@
 }
 
 - (void)disconnectWithDisconnectHandler:(MQTTDisconnectHandler)disconnectHandler {
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTSessionManager"];
+    
     [self updateState:MQTTSessionManagerStateClosing];
     [self.session closeWithDisconnectHandler:disconnectHandler];
     [self.reconnectTimer stop];
