@@ -6,9 +6,9 @@
 //
 
 #import "MQTTCFSocketDecoder.h"
-#import <FirebaseCrashlytics/FIRCrashlytics.h>
 #import "MQTTLog.h"
-#import "BossBasicDefine.h"
+
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 
 @interface MQTTCFSocketDecoder()
 
@@ -24,6 +24,10 @@
     return self;
 }
 
+- (void)dealloc {
+    [self close];
+}
+
 - (void)open {
     if (self.state == MQTTCFSocketDecoderStateInitializing) {
         (self.stream).delegate = self;
@@ -31,12 +35,15 @@
     }
 }
 
-- (void)dealloc {
-    [self close];
-}
-
 - (void)close {
-    [[FIRCrashlytics crashlytics] setCustomValue:@(self.stream.streamStatus) forKey:@"MQTTCFSocketDecoderStreamStatus"];
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketDecoderState close"];
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.stream.streamStatus) forKey:@"NSInputStream NSStreamStatus"];
+    
+    if(self.stream.streamStatus == NSStreamStatusClosed){
+        return;
+    }
+    
     [self.stream close];
     [self.stream setDelegate:nil];
 }
@@ -76,6 +83,7 @@
     
     if (eventCode & NSStreamEventEndEncountered) {
         DDLogVerbose(@"[MQTTCFSocketDecoder] NSStreamEventEndEncountered");
+        [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketDecoderState stream"];
         self.state = MQTTCFSocketDecoderStateInitializing;
         self.error = nil;
         [self.delegate decoderdidClose:self];
