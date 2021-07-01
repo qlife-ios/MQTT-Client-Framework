@@ -495,6 +495,8 @@ NSString * const MQTTSessionErrorDomain = @"MQTT";
           disconnectHandler:(MQTTDisconnectHandler)disconnectHandler {
     DDLogVerbose(@"[MQTTSession] closeWithDisconnectHandler:%p ", disconnectHandler);
     self.disconnectHandler = disconnectHandler;
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.status) forKey:@"MQTTSessionStatus closeWithReturnCode"];
 
     if (self.status == MQTTSessionStatusConnected) {
         [self disconnectWithReturnCode:returnCode
@@ -540,9 +542,6 @@ NSString * const MQTTSessionErrorDomain = @"MQTT";
         [self.keepAliveTimer invalidate];
         self.keepAliveTimer = nil;
     }
-    
-    [[FIRCrashlytics crashlytics] setCustomValue:@(self.transport.state) forKey:@"MQTTSessionTransport"];
-    [[FIRCrashlytics crashlytics] setCustomValue:@(self.decoder.state) forKey:@"MQTTSessionDecoder"];
     
     if (self.transport) {
         [self.transport close];
@@ -1258,10 +1257,17 @@ NSString * const MQTTSessionErrorDomain = @"MQTT";
 }
 
 - (void)error:(MQTTSessionEvent)eventCode error:(NSError *)error {
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.status) forKey:@"MQTTSessionStatus error"];
+    if(error){
+        [[FIRCrashlytics crashlytics] setCustomValue:error.userInfo forKey:@"MQTTSession error info"];
+    }
+    
     self.status = MQTTSessionStatusError;
     if ([self.delegate respondsToSelector:@selector(handleEvent:event:error:)]) {
         [self.delegate handleEvent:self event:eventCode error:error];
     }
+    
     [self closeInternal];
     
     if (self.connectionHandler) {

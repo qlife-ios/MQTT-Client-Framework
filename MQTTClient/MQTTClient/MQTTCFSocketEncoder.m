@@ -6,8 +6,9 @@
 //
 
 #import "MQTTCFSocketEncoder.h"
-
 #import "MQTTLog.h"
+
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 
 @interface MQTTCFSocketEncoder()
 
@@ -30,11 +31,21 @@
 }
 
 - (void)open {
-    (self.stream).delegate = self;
-    [self.stream open];
+    if(self.state == MQTTCFSocketEncoderStateInitializing){
+        (self.stream).delegate = self;
+        [self.stream open];
+    }
 }
 
 - (void)close {
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketEncoderState close"];
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.stream.streamStatus) forKey:@"NSOutputStream NSStreamStatus"];
+    
+    if(self.stream.streamStatus == NSStreamStatusClosed){
+        return;
+    }
+    
     [self.stream close];
     [self.stream setDelegate:nil];
 }
@@ -72,6 +83,7 @@
     }
     if (eventCode & NSStreamEventErrorOccurred) {
         DDLogVerbose(@"[MQTTCFSocketEncoder] NSStreamEventErrorOccurred");
+        [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketEncoderState stream"];
         self.state = MQTTCFSocketEncoderStateError;
         self.error = self.stream.streamError;
         [self.delegate encoder:self didFailWithError:self.error];

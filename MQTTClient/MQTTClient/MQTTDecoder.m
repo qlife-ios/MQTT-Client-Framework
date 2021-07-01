@@ -6,8 +6,9 @@
 //
 
 #import "MQTTDecoder.h"
-
 #import "MQTTLog.h"
+
+#import <FirebaseCrashlytics/FIRCrashlytics.h>
 
 @interface MQTTDecoder() {
     void *QueueIdentityKey;
@@ -50,13 +51,15 @@
 
 - (void)decodeMessage:(NSData *)data {
     NSInputStream *stream = [NSInputStream inputStreamWithData:data];
-    CFReadStreamRef readStream = (__bridge CFReadStreamRef)stream;
-    CFReadStreamSetDispatchQueue(readStream, self.queue);
     [self openStream:stream];
 }
 
 - (void)openStream:(NSInputStream *)stream {
     [self.streams addObject:stream];
+    CFReadStreamRef readStream = (__bridge CFReadStreamRef)stream;
+    if(@available(iOS 7.0, *)){
+        CFReadStreamSetDispatchQueue(readStream, self.queue);
+    }
     stream.delegate = self;
     DDLogVerbose(@"[MQTTDecoder] #streams=%lu", (unsigned long)self.streams.count);
     if (self.streams.count == 1) {
@@ -71,14 +74,26 @@
 - (void)internalClose {
     if (self.streams) {
         for (NSInputStream *stream in self.streams) {
-            [stream close];
-            [stream setDelegate:nil];
+            [self closeInputStream:stream];
         }
         [self.streams removeAllObjects];
     }
 }
 
+- (void)closeInputStream:(NSInputStream *) inputStream{
+    if(inputStream) {
+        if(@available(iOS 7.0, *)){
+            CFReadStreamSetDispatchQueue((CFReadStreamRef)CFBridgingRetain(inputStream), NULL);
+        }
+        [inputStream close];
+        [inputStream setDelegate:nil];
+    }
+}
+
 - (void)close {
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTDecoderState close"];
+    
     // https://github.com/novastone-media/MQTT-Client-Framework/issues/325
     // We need to make sure that we are closing streams on their queue
     // Otherwise, we end up with race condition where delegate is deallocated
@@ -186,8 +201,7 @@
         DDLogVerbose(@"[MQTTDecoder] NSStreamEventEndEncountered");
         
         if (self.streams) {
-            [stream setDelegate:nil];
-            [stream close];
+            [self closeInputStream:stream];
             [self.streams removeObject:stream];
             if (self.streams.count) {
                 NSInputStream *stream = (self.streams)[0];

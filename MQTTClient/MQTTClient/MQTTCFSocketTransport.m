@@ -42,6 +42,9 @@
 }
 
 - (void)dealloc {
+    if(self.state == MQTTTransportClosing){
+        return;
+    }
     [self close];
 }
 
@@ -105,7 +108,9 @@
     if (!connectError) {
         self.encoder.delegate = nil;
         self.encoder = [[MQTTCFSocketEncoder alloc] init];
-        CFWriteStreamSetDispatchQueue(writeStream, self.queue);
+        if(@available(iOS 7.0, *)){
+            CFWriteStreamSetDispatchQueue(writeStream, self.queue);
+        }
         self.encoder.stream = CFBridgingRelease(writeStream);
         self.encoder.delegate = self;
         if (self.voip) {
@@ -115,7 +120,9 @@
         
         self.decoder.delegate = nil;
         self.decoder = [[MQTTCFSocketDecoder alloc] init];
-        CFReadStreamSetDispatchQueue(readStream, self.queue);
+        if(@available(iOS 7.0, *)){
+            CFReadStreamSetDispatchQueue(readStream, self.queue);
+        }
         self.decoder.stream =  CFBridgingRelease(readStream);
         self.decoder.delegate = self;
         if (self.voip) {
@@ -132,6 +139,9 @@
     // We need to make sure that we are closing streams on their queue
     // Otherwise, we end up with race condition where delegate is deallocated
     // but still used by run loop event
+    
+    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTTransportState"]; // MQTTTransportOpen
+    
     if (self.queue != dispatch_get_specific(&QueueIdentityKey)) {
         dispatch_sync(self.queue, ^{
             [self internalClose];
@@ -142,20 +152,22 @@
 }
 
 - (void)internalClose {
-    DDLogVerbose(@"[MQTTCFSocketTransport] close");
-    
-    [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketTransportState"];
-    [[FIRCrashlytics crashlytics] setCustomValue:@(self.encoder.state) forKey:@"MQTTCFSocketTransportEncoder"];
-    [[FIRCrashlytics crashlytics] setCustomValue:@(self.decoder.state) forKey:@"MQTTCFSocketTransportDecoder"];
+    DDLogVerbose(@"[MQTTCFSocketTransport] close");   
     
     self.state = MQTTTransportClosing;
 
     if (self.encoder) {
+        if(@available(iOS 7.0, *)){
+            CFWriteStreamSetDispatchQueue((CFWriteStreamRef)CFBridgingRetain(self.encoder.stream), NULL);
+        }
         [self.encoder close];
         self.encoder.delegate = nil;
     }
     
     if (self.decoder) {
+        if(@available(iOS 7.0, *)){
+            CFReadStreamSetDispatchQueue((CFReadStreamRef)CFBridgingRetain(self.decoder.stream), NULL);
+        }
         [self.decoder close];
         self.decoder.delegate = nil;
     }
@@ -182,6 +194,7 @@
     self.state = MQTTTransportClosed;
     [self.delegate mqttTransportDidClose:self];
 }
+
 - (void)encoderdidClose:(MQTTCFSocketEncoder *)sender {
     //self.state = MQTTTransportClosed;
     //[self.delegate mqttTransportDidClose:self];
