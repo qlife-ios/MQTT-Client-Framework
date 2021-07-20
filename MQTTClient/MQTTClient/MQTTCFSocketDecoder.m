@@ -7,7 +7,7 @@
 
 #import "MQTTCFSocketDecoder.h"
 #import "MQTTLog.h"
-
+#import "JYCSimpleToolClass.h"
 #import <FirebaseCrashlytics/FIRCrashlytics.h>
 
 @interface MQTTCFSocketDecoder()
@@ -39,6 +39,7 @@
     
     [[FIRCrashlytics crashlytics] setCustomValue:@(self.state) forKey:@"MQTTCFSocketDecoderState close"];
     [[FIRCrashlytics crashlytics] setCustomValue:@(self.stream.streamStatus) forKey:@"NSInputStream NSStreamStatus"];
+    [[FIRCrashlytics crashlytics] setCustomValue:NSStringFromClass([[JYCSimpleToolClass getCurrentVC] class]) forKey:@"CrashVC"];
     
     if(self.stream.streamStatus == NSStreamStatusClosed){
         return;
